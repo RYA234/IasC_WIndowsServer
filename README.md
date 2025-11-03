@@ -1,15 +1,38 @@
 # 概要
-WindowsServerをvargrantとterraformで構築するためのリポジトリです。
+WindowsServerをVagrant（Hyper-V）とTerraformで構築するためのリポジトリです。
 
-
-
-# 開発環境
 
 名称|バージョン|説明
 ---|----------|----
-Windows|10|OS
+Windows|10|クライアントのOS
 VSCODE|--| IDE
-Vagrant|--|仮想マシンを構築ツール
+Vagrant|2.2|仮想マシン構築ツール
 Terraform|--|IasCツール
 Ansible|--|構成管理ツール
-WindowsServer|--|Dockerを動作させるために必要
+HyperV|--||aa
+WindowsServer|2019　GUI版|構築したいサーバー
+
+# 仮想環境要件
+HDD容量：５０GM
+メモリ：８GB
+WindowsServer2019 GUI版
+リモートデスクトップ接続できること
+ログイン情報は以下の通りとする。
+PC名：vagrantWinServer2019
+UserName: admin
+password: 1P@ssw0rd
+
+は固定値はenv.ファイルみたいなのを使って別ファイルに分けること
+
+
+
+Ansible側
+SQLServerがインストール済みであること
+クライアント側からSQLServerにアクセスできること
+SQLのアクセス情報は
+UserName:USER
+pass:test
+とする
+
+
+SSMSをインストールする。
