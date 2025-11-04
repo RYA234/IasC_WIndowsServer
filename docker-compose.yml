@@ -1,0 +1,43 @@
+services:
+  ansible:
+    build: .
+    container_name: ansible-controller
+    volumes:
+      - .:/workspace
+      - ${USERPROFILE}\.ssh:/root/.ssh:ro
+    working_dir: /workspace
+    environment:
+      - ANSIBLE_HOST_KEY_CHECKING=False
+      - ANSIBLE_STDOUT_CALLBACK=yaml
+      - ANSIBLE_GATHERING=explicit
+    networks:
+      - ansible-network
+    tty: true
+    stdin_open: true
+
+  # Ubuntu target for testing (動作チェックのサンプルコンテナ)
+  ubuntu-target:
+    image: ubuntu:22.04
+    container_name: ubuntu-target
+    networks:
+      - ansible-network
+    ports:
+      - "2222:22"  # SSH
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+    volumes:
+      - ./scripts:/scripts
+    command: |
+      bash -c "
+        apt-get update && 
+        apt-get install -y openssh-server sudo python3 && 
+        useradd -m -s /bin/bash ansible && 
+        echo 'ansible:ansible' | chpasswd && 
+        echo 'ansible ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && 
+        service ssh start && 
+        tail -f /dev/null
+      "
+
+networks:
+  ansible-network:
+    driver: bridge
