@@ -1,17 +1,28 @@
 services:
-  ansible:
-    build: .
-    container_name: ansible-controller
+  iasc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: iasc
     volumes:
       - .:/workspace
       - ${USERPROFILE}\.ssh:/root/.ssh:ro
+      - ${USERPROFILE}\.aws:/root/.aws:ro
+      - ${USERPROFILE}\.azure:/root/.azure:ro
     working_dir: /workspace
     environment:
       - ANSIBLE_HOST_KEY_CHECKING=False
       - ANSIBLE_STDOUT_CALLBACK=yaml
       - ANSIBLE_GATHERING=explicit
+      - TF_LOG=INFO
+      - TF_IN_AUTOMATION=true
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
-      - ansible-network
+      - iasc-network
     tty: true
     stdin_open: true
 
@@ -20,7 +31,7 @@ services:
     image: ubuntu:22.04
     container_name: ubuntu-target
     networks:
-      - ansible-network
+      - iasc-network
     ports:
       - "2222:22"  # SSH
     environment:
@@ -39,5 +50,5 @@ services:
       "
 
 networks:
-  ansible-network:
+  iasc-network:
     driver: bridge

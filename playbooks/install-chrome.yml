@@ -1,0 +1,44 @@
+---
+- name: Google Chrome をインストール
+  hosts: win10
+  gather_facts: false
+
+  tasks:
+    - name: Chocolatey がインストールされているか確認
+      ansible.windows.win_shell: |
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+          Write-Output "installed"
+        } else {
+          Write-Output "not_installed"
+        }
+      register: choco_check
+      changed_when: false
+
+    - name: Chocolatey をインストール（未インストールの場合）
+      ansible.windows.win_shell: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      when: choco_check.stdout | trim == "not_installed"
+      become: yes
+      become_method: runas
+      become_user: ansible
+
+    - name: Google Chrome をインストール
+      chocolatey.chocolatey.win_chocolatey:
+        name: googlechrome
+        state: present
+      become: yes
+      become_method: runas
+      become_user: ansible
+
+    - name: インストール完了メッセージ
+      ansible.windows.win_shell: |
+        Write-Output "=== Google Chrome インストール完了 ==="
+        Write-Output "ホスト名: $env:COMPUTERNAME"
+        Write-Output "ユーザー: $env:USERNAME"
+      register: install_info
+
+    - name: インストール情報を表示
+      debug:
+        var: install_info.stdout_lines
