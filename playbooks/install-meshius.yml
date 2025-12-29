@@ -1,0 +1,191 @@
+---
+- name: MESCIUS製品をインストールしてライセンス認証
+  hosts: win10
+  gather_facts: false
+  vars_files:
+    - ../inventory/vault.yml
+  vars:
+    # MESCIUS (旧GrapeCity) 製品情報
+    meshius_products:
+      - name: "ActiveReports for .NET"
+        version: "18.2.0"
+        installer_path: "../installers/ActiveReportsNET18_18.2.0.exe"
+        install_dir: "C:\\Program Files\\GrapeCity\\ActiveReports"
+      - name: "InputManPlus for Windows Forms"
+        version: "12.0J"
+        installer_path: "../installers/InputManWin12_20240925.exe"
+        install_dir: "C:\\Program Files\\GrapeCity\\InputMan"
+      - name: "MultiRowPlus for Windows Forms"
+        version: "12.0J"
+        installer_path: "../installers/MultiRowWin12_20240925.exe"
+        install_dir: "C:\\Program Files\\GrapeCity\\MultiRow"
+
+  tasks:
+    - name: Chocolatey がインストールされているか確認
+      ansible.windows.win_shell: |
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+          Write-Output "installed"
+        } else {
+          Write-Output "not_installed"
+        }
+      register: choco_check
+      changed_when: false
+
+    - name: Chocolatey をインストール（未インストールの場合）
+      ansible.windows.win_shell: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      when: choco_check.stdout | trim == "not_installed"
+
+    # MESCIUS製品インストーラーをコピー
+    - name: MESCIUS製品インストーラーをコピー
+      ansible.windows.win_copy:
+        src: "{{ item.installer_path }}"
+        dest: "C:\\Temp\\{{ item.name | regex_replace(' ', '_') }}_installer.exe"
+      loop: "{{ meshius_products }}"
+      when: item.installer_path is defined
+
+    # MESCIUS製品をサイレントインストール
+    - name: MESCIUS製品をサイレントインストール
+      ansible.windows.win_package:
+        path: "C:\\Temp\\{{ item.name | regex_replace(' ', '_') }}_installer.exe"
+        arguments: /SILENT
+        state: present
+      loop: "{{ meshius_products }}"
+      register: install_result
+      async: 3600
+      poll: 30
+
+    # パターン1: レジストリベースのライセンス認証
+    # TODO: 実際のレジストリパスに置き換えてください
+    # MESCIUS製品（旧GrapeCity）は通常以下のいずれかにライセンス情報を保存:
+    # - HKLM:\Software\GrapeCity\{製品名} (レガシーパス)
+    # - HKLM:\Software\MESCIUS\{製品名} (新パス)
+    - name: ライセンスキーをレジストリに登録 - ActiveReports
+      ansible.windows.win_regedit:
+        path: "HKLM:\\Software\\GrapeCity\\ActiveReportsfor.NET"
+        name: LicenseKey
+        data: "{{ activereports_license_key | default(meshius_license_key) }}"
+        type: string
+      when: activereports_license_key is defined or meshius_license_key is defined
+      ignore_errors: true
+      tags:
+        - license
+        - registry
+
+    - name: ライセンスキーをレジストリに登録 - InputManPlus
+      ansible.windows.win_regedit:
+        path: "HKLM:\\Software\\GrapeCity\\InputManPlusforWindowsForms"
+        name: LicenseKey
+        data: "{{ inputman_license_key | default(meshius_license_key) }}"
+        type: string
+      when: inputman_license_key is defined or meshius_license_key is defined
+      ignore_errors: true
+      tags:
+        - license
+        - registry
+
+    - name: ライセンスキーをレジストリに登録 - MultiRowPlus
+      ansible.windows.win_regedit:
+        path: "HKLM:\\Software\\GrapeCity\\MultiRowPlusforWindowsForms"
+        name: LicenseKey
+        data: "{{ multirow_license_key | default(meshius_license_key) }}"
+        type: string
+      when: multirow_license_key is defined or meshius_license_key is defined
+      ignore_errors: true
+      tags:
+        - license
+        - registry
+
+    # パターン2: ライセンスファイルベースの認証
+    # TODO: 実際のライセンスファイルパスに置き換えてください
+    # - name: ライセンスファイルを配置（ファイルベースの場合）
+    #   ansible.windows.win_copy:
+    #     content: |
+    #       LICENSE_KEY={{ meshius_license_key }}
+    #       PRODUCT_KEY={{ meshius_product_key }}
+    #     dest: "{{ item.install_dir }}\\license.lic"
+    #   loop: "{{ meshius_products }}"
+    #   when: meshius_license_key is defined
+    #   tags:
+    #     - license
+    #     - file
+
+    # パターン3: コマンドラインでのライセンス認証
+    # TODO: 実際の認証コマンドに置き換えてください
+    # - name: コマンドラインでライセンス認証
+    #   ansible.windows.win_shell: |
+    #     & "{{ item.install_dir }}\activate.exe" --key "{{ meshius_license_key }}"
+    #   loop: "{{ meshius_products }}"
+    #   register: activation_result
+    #   when: meshius_license_key is defined
+    #   tags:
+    #     - license
+    #     - command
+
+    # - name: 認証結果を表示
+    #   debug:
+    #     var: activation_result.stdout_lines
+    #   when: activation_result is defined
+
+    - name: インストール・認証状況の確認
+      ansible.windows.win_shell: |
+        Write-Output "=== MESCIUS (旧GrapeCity) 製品 インストール・認証状況 ==="
+        Write-Output "ホスト名: $env:COMPUTERNAME"
+        Write-Output "ユーザー: $env:USERNAME"
+        Write-Output ""
+        Write-Output "[対象製品とインストール状況]"
+
+        # ActiveReports for .NET
+        if (Test-Path "C:\Program Files\GrapeCity\ActiveReports") {
+          Write-Output "✅ ActiveReports for .NET 18.2.0: インストール済み"
+        } else {
+          Write-Output "❌ ActiveReports for .NET 18.2.0: 未インストール"
+        }
+
+        # InputManPlus for Windows Forms
+        if (Test-Path "C:\Program Files\GrapeCity\InputMan") {
+          Write-Output "✅ InputManPlus for Windows Forms 12.0J: インストール済み"
+        } else {
+          Write-Output "❌ InputManPlus for Windows Forms 12.0J: 未インストール"
+        }
+
+        # MultiRowPlus for Windows Forms
+        if (Test-Path "C:\Program Files\GrapeCity\MultiRow") {
+          Write-Output "✅ MultiRowPlus for Windows Forms 12.0J: インストール済み"
+        } else {
+          Write-Output "❌ MultiRowPlus for Windows Forms 12.0J: 未インストール"
+        }
+
+        Write-Output ""
+        Write-Output "[ライセンス登録状況]"
+
+        # ActiveReports ライセンス確認
+        $arLicense = Get-ItemProperty -Path "HKLM:\Software\GrapeCity\ActiveReportsfor.NET" -Name LicenseKey -ErrorAction SilentlyContinue
+        if ($arLicense) {
+          Write-Output "✅ ActiveReports: ライセンスキー登録済み"
+        } else {
+          Write-Output "❌ ActiveReports: ライセンスキー未登録"
+        }
+
+        # InputManPlus ライセンス確認
+        $imLicense = Get-ItemProperty -Path "HKLM:\Software\GrapeCity\InputManPlusforWindowsForms" -Name LicenseKey -ErrorAction SilentlyContinue
+        if ($imLicense) {
+          Write-Output "✅ InputManPlus: ライセンスキー登録済み"
+        } else {
+          Write-Output "❌ InputManPlus: ライセンスキー未登録"
+        }
+
+        # MultiRowPlus ライセンス確認
+        $mrLicense = Get-ItemProperty -Path "HKLM:\Software\GrapeCity\MultiRowPlusforWindowsForms" -Name LicenseKey -ErrorAction SilentlyContinue
+        if ($mrLicense) {
+          Write-Output "✅ MultiRowPlus: ライセンスキー登録済み"
+        } else {
+          Write-Output "❌ MultiRowPlus: ライセンスキー未登録"
+        }
+      register: install_info
+
+    - name: インストール情報を表示
+      debug:
+        var: install_info.stdout_lines

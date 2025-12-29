@@ -1,0 +1,100 @@
+---
+- name: MESCIUS製品のライセンス情報を削除（テスト用）
+  hosts: win10
+  gather_facts: false
+
+  tasks:
+    - name: 既存ライセンス情報の確認
+      ansible.windows.win_shell: |
+        Write-Output "=== 既存のライセンス情報を確認 ==="
+        Write-Output ""
+
+        # ActiveReports for .NET
+        if (Test-Path "HKLM:\Software\GrapeCity\ActiveReportsfor.NET") {
+          Write-Output "[ActiveReports] レジストリキー存在: あり"
+          $ar = Get-ItemProperty -Path "HKLM:\Software\GrapeCity\ActiveReportsfor.NET" -ErrorAction SilentlyContinue
+          if ($ar.LicenseKey) {
+            Write-Output "  - LicenseKey: 設定済み"
+          }
+        } else {
+          Write-Output "[ActiveReports] レジストリキー存在: なし"
+        }
+
+        # InputManPlus
+        if (Test-Path "HKLM:\Software\GrapeCity\InputManPlusforWindowsForms") {
+          Write-Output "[InputManPlus] レジストリキー存在: あり"
+          $im = Get-ItemProperty -Path "HKLM:\Software\GrapeCity\InputManPlusforWindowsForms" -ErrorAction SilentlyContinue
+          if ($im.LicenseKey) {
+            Write-Output "  - LicenseKey: 設定済み"
+          }
+        } else {
+          Write-Output "[InputManPlus] レジストリキー存在: なし"
+        }
+
+        # MultiRowPlus
+        if (Test-Path "HKLM:\Software\GrapeCity\MultiRowPlusforWindowsForms") {
+          Write-Output "[MultiRowPlus] レジストリキー存在: あり"
+          $mr = Get-ItemProperty -Path "HKLM:\Software\GrapeCity\MultiRowPlusforWindowsForms" -ErrorAction SilentlyContinue
+          if ($mr.LicenseKey) {
+            Write-Output "  - LicenseKey: 設定済み"
+          }
+        } else {
+          Write-Output "[MultiRowPlus] レジストリキー存在: なし"
+        }
+      register: license_check
+      changed_when: false
+
+    - name: 既存ライセンス情報を表示
+      debug:
+        var: license_check.stdout_lines
+
+    - name: ActiveReports のライセンスキーを削除
+      ansible.windows.win_shell: |
+        if (Test-Path "HKLM:\Software\GrapeCity\ActiveReportsfor.NET") {
+          Remove-ItemProperty -Path "HKLM:\Software\GrapeCity\ActiveReportsfor.NET" -Name "LicenseKey" -ErrorAction SilentlyContinue
+          Write-Output "ActiveReports のライセンスキーを削除しました"
+        } else {
+          Write-Output "ActiveReports のレジストリキーが存在しません（スキップ）"
+        }
+      register: ar_cleanup
+      changed_when: "'削除しました' in ar_cleanup.stdout"
+
+    - name: InputManPlus のライセンスキーを削除
+      ansible.windows.win_shell: |
+        if (Test-Path "HKLM:\Software\GrapeCity\InputManPlusforWindowsForms") {
+          Remove-ItemProperty -Path "HKLM:\Software\GrapeCity\InputManPlusforWindowsForms" -Name "LicenseKey" -ErrorAction SilentlyContinue
+          Write-Output "InputManPlus のライセンスキーを削除しました"
+        } else {
+          Write-Output "InputManPlus のレジストリキーが存在しません（スキップ）"
+        }
+      register: im_cleanup
+      changed_when: "'削除しました' in im_cleanup.stdout"
+
+    - name: MultiRowPlus のライセンスキーを削除
+      ansible.windows.win_shell: |
+        if (Test-Path "HKLM:\Software\GrapeCity\MultiRowPlusforWindowsForms") {
+          Remove-ItemProperty -Path "HKLM:\Software\GrapeCity\MultiRowPlusforWindowsForms" -Name "LicenseKey" -ErrorAction SilentlyContinue
+          Write-Output "MultiRowPlus のライセンスキーを削除しました"
+        } else {
+          Write-Output "MultiRowPlus のレジストリキーが存在しません（スキップ）"
+        }
+      register: mr_cleanup
+      changed_when: "'削除しました' in mr_cleanup.stdout"
+
+    - name: クリーンアップ完了メッセージ
+      ansible.windows.win_shell: |
+        Write-Output ""
+        Write-Output "=== クリーンアップ完了 ==="
+        Write-Output "ホスト名: $env:COMPUTERNAME"
+        Write-Output ""
+        Write-Output "削除した項目:"
+        Write-Output "- ActiveReports for .NET のライセンスキー"
+        Write-Output "- InputManPlus for Windows Forms のライセンスキー"
+        Write-Output "- MultiRowPlus for Windows Forms のライセンスキー"
+        Write-Output ""
+        Write-Output "これで新規テスト可能な状態になりました。"
+      register: cleanup_info
+
+    - name: クリーンアップ情報を表示
+      debug:
+        var: cleanup_info.stdout_lines

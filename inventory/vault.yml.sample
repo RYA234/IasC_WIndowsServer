@@ -1,0 +1,51 @@
+# Ansible Vault サンプルファイル
+# このファイルをコピーして vault.yml を作成し、ansible-vault で暗号化してください
+#
+# 使用方法:
+# 1. このファイルをコピー: cp vault.yml.sample vault.yml
+# 2. 実際のライセンスキーを設定
+# 3. 暗号化: docker-compose exec iasc ansible-vault encrypt inventory/vault.yml
+#
+# 編集方法:
+# docker-compose exec iasc ansible-vault edit inventory/vault.yml --vault-password-file .vault_pass
+
+# MESCIUS (旧GrapeCity) 製品のライセンスキー
+# 対象製品:
+# - ActiveReports for .NET 18.0J (トライアル版)
+# - InputManPlus for Windows Forms 12.0J (トライアル版)
+# - MultiRowPlus for Windows Forms 12.0J (トライアル版)
+
+# ===================================================================
+# 全製品共通のライセンスキー（全製品で同じキーを使用する場合）
+# ===================================================================
+# TODO: 実際のライセンスキーに置き換えてください
+# トライアル版の場合はトライアルキーを入力
+meshius_license_key: "XXXX-XXXX-XXXX-XXXX"
+meshius_product_key: "YYYY-YYYY-YYYY-YYYY"
+
+# ===================================================================
+# 製品ごとに異なるライセンスキーを使用する場合
+# ===================================================================
+# ActiveReports for .NET 18.0J のライセンスキー
+activereports_license_key: "AR18-XXXX-XXXX-XXXX-XXXX"
+activereports_product_key: "AR18-YYYY-YYYY-YYYY-YYYY"
+
+# InputManPlus for Windows Forms 12.0J のライセンスキー
+inputman_license_key: "IM12-XXXX-XXXX-XXXX-XXXX"
+inputman_product_key: "IM12-YYYY-YYYY-YYYY-YYYY"
+
+# MultiRowPlus for Windows Forms 12.0J のライセンスキー
+multirow_license_key: "MR12-XXXX-XXXX-XXXX-XXXX"
+multirow_product_key: "MR12-YYYY-YYYY-YYYY-YYYY"
+
+# ===================================================================
+# その他の機密情報
+# ===================================================================
+# MESCIUS ライセンス認証サーバー
+# meshius_activation_server: "https://www.mescius.jp/license"
+
+# 会社ID（オンライン認証が必要な場合）
+# meshius_company_id: "your-company-id"
+
+# ライセンス管理者情報（任意）
+# meshius_admin_email: "admin@example.com"
